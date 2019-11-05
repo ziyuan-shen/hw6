@@ -1,0 +1,16 @@
+---
+title: "Homework 6"
+author: '[Group member names]'
+date: "11/05/2019"
+output: 
+  html_document:
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
+                      warning = FALSE)
+```
+
+
+
