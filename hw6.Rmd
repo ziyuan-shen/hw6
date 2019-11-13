@@ -64,6 +64,7 @@ bike_test <- bike_test %>%
 ```
 
 ```{r get-predictions}
+# for each observation in testing data, filter the training data (historical observations) using the same start_station and similar durations, and get all potential end stations with a probability distribution 
 get_proba <- function (row) {
   bike %>%
     filter(start_station == row$start_station, duration > row$duration * 0.9, duration < row$duration * 1.1) %>%
@@ -73,6 +74,8 @@ get_proba <- function (row) {
     mutate(proba = count / total)
 }
 
+# set progress bar for dopar
+# the training process takes over 20min
 cl <- makeCluster(4)
 registerDoSNOW(cl)
 iterations <- dim(bike_test_blank)[1]
