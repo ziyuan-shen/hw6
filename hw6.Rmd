@@ -13,4 +13,85 @@ knitr::opts_chunk$set(echo = TRUE, comment = NA, message = FALSE,
 ```
 
 
+```{r library}
+library(bench)
+library(tidyverse)
+library(doMC)
+library(doSNOW)
+library(vroom)
+library(jsonlite)
+library(httr)
+library(rlist)
+library(tree)
+```
+
+
+```{r load-data}
+bike <- readRDS('./Data/bike/bike.Rda')
+bike_test <- readRDS('./Data/bike/bike_test.Rda')
+```
+
+
+```{r preprocess}
+# Making training set names consistent with testing set
+colnames(bike) <- tolower(str_replace_all(colnames(bike), "\\s+", "_"))
+# Create a blank test dataframe to output predictions
+bike_test_blank <- bike_test %>%
+  mutate_at(vars(8:dim(bike_test)[2]), function(x) { 0 })
+
+# select useful columns
+bike <- bike %>%
+  select(start_date, duration, start_station, member_type, end_station) %>%
+  mutate(month_name = format(start_date, format = "%h")) %>%
+  mutate(hour_num = as.integer(format(start_date, format = "%H"))) %>%
+  mutate(time_period = sapply(hour_num, function(hour) {
+    if (hour %in% 0:5) "night"
+    else if (hour %in% 6:11) "morning"
+    else if (hour %in% 12:17) "afternoon"
+    else "evening"
+  }))
+  
+bike_test <- bike_test %>%
+  select(start_date, duration, start_station, member_type) %>%
+  mutate(month_name = format(start_date, format = "%h")) %>%
+  mutate(hour_num = as.integer(format(start_date, format = "%H"))) %>%
+  mutate(time_period = sapply(hour_num, function(hour) {
+    if (hour %in% 0:5) "night"
+    else if (hour %in% 6:11) "morning"
+    else if (hour %in% 12:17) "afternoon"
+    else "evening"
+  }))
+```
+
+```{r get-predictions}
+get_proba <- function (row) {
+  bike %>%
+    filter(start_station == row$start_station, duration > row$duration * 0.9, duration < row$duration * 1.1) %>%
+    group_by(end_station) %>%
+    summarize(count = n()) %>%
+    mutate(total = sum(count)) %>%
+    mutate(proba = count / total)
+}
+
+cl <- makeCluster(4)
+registerDoSNOW(cl)
+iterations <- dim(bike_test_blank)[1]
+pb <- txtProgressBar(max = iterations, style = 3)
+progress <- function(n) setTxtProgressBar(pb, n)
+opts <- list(progress = progress)
+
+bike_test_machac <- foreach (i = 1:dim(bike_test_blank)[1], .combine='bind_rows', .options.snow = opts, .packages = c('tidyverse')) %dopar% {
+  proba_df <- get_proba(bike_test_blank[i, ])
+  bike_test_blank[i, proba_df$end_station] <- proba_df$proba
+  bike_test_blank[i, ]
+}
+
+close(pb)
+stopCluster(cl) 
+```
+
+
+```{r output-prediction}
+write_csv(bike_test_machac, "cbs_mac-hack.csv")
+```
 
