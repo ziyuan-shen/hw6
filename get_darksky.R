@@ -6,8 +6,8 @@ darksky_key <- fromJSON("api_keys.json")$darksky_key
 
 dc_lat <- 38.9072
 dc_long <- -77.0369
-# Loop over all possible dates from 2013 - 2017
-days <- seq(as.Date("2013-01-01"), as.Date("2017-12-31"), by = 1)
+# Loop over all possible dates from 2013 - 2018
+days <- seq(as.Date("2013-01-01"), as.Date("2018-12-31"), by = 1)
 
 ds_urls <- str_c("https://api.darksky.net/forecast/", darksky_key, "/",
                  dc_lat, ",", dc_long, ",", days[1100], "T12:00:00")
